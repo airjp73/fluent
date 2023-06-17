@@ -1,0 +1,21 @@
+{
+  "name": "fluent",
+  "version": "1.0.0",
+  "description": "A utility for easily creating fluent APIs",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "build": "bun build src/index.ts --outdir ./dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Aaron Pettengill",
+  "license": "MIT",
+  "devDependencies": {
+    "bun-types": "^0.6.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
