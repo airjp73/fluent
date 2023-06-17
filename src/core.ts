@@ -69,9 +69,8 @@ export class FluentPipeline<
     protected pipelineSteps: Function[]
   ) {
     Object.entries(__transforms).forEach(([key, value]) => {
-      // TODO: can this be done without bind?
       // @ts-ignore
-      this[key] = value.bind(this);
+      this[key] = value;
     });
   }
 
