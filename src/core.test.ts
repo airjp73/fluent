@@ -13,6 +13,7 @@ import { expectType } from "./testUtils";
 import { apply, get } from "./builtins/terminals";
 import { label } from "./builtins/forms";
 import { e } from "./preconfigured/everything";
+import { FluentError } from "./errors";
 
 /**
  * Does this have docs, too?
@@ -324,6 +325,33 @@ it("should be able to customize error handlers", () => {
 
   expect(() => custom().label("Foo").string().label("Bar").validate(5)).toThrow(
     "Foo has a custom error!"
+  );
+});
+
+it("should throw FluentErrors when validations fail", () => {
+  const validator = e().string().minLength(5);
+
+  // `toThrow` won't check the `code` property, so we have to do this
+  const getError = (func: () => any) => {
+    try {
+      func();
+    } catch (err) {
+      return err;
+    }
+  };
+
+  expect(getError(() => validator.validate("foo"))).toEqual(
+    new FluentError(
+      e.__transforms.minLength.errorKey,
+      e.__transforms.minLength.defaultErrorMessage({}, 5)
+    )
+  );
+
+  expect(getError(() => validator.validate(1))).toEqual(
+    new FluentError(
+      e.__transforms.string.errorKey,
+      e.__transforms.string.defaultErrorMessage({})
+    )
   );
 });
 

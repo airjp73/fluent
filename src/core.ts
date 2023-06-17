@@ -1,4 +1,5 @@
 import { Merge, OverloadToTuple, UnionToIntersection } from "./typeUtils";
+import { FluentError } from "./errors";
 
 export type NoData = void;
 
@@ -101,7 +102,8 @@ export class FluentPipeline<
     checker: (input: FluentData<this>) => Result,
     message?:
       | string
-      | ((meta: this["meta"], val: this["__outputType"]) => string)
+      | ((meta: this["meta"], val: this["__outputType"]) => string),
+    errorCode?: string
   ): FluentChain<
     Result extends Promise<boolean>
       ? Promise<FluentData<this>>
@@ -121,8 +123,13 @@ export class FluentPipeline<
           if (typeof message === "function") return message(this.meta, prev);
         };
         const msg = getMsg();
-        throw new Error(
-          msg ? "Validation failed: " + msg : "Validation failed"
+        throw new FluentError(
+          errorCode ?? "unknown_validation_error",
+          msg
+            ? msg
+            : (this.meta as any)?.errorMessages?.unknown_validation_error(
+                this.meta
+              ) ?? "Validation failed"
         );
       };
 
@@ -134,17 +141,24 @@ export class FluentPipeline<
 
   public checkType<CheckedType>(
     checker: (input: unknown) => input is CheckedType,
-    message?: string | ((meta: this["meta"]) => string)
+    message?: string | ((meta: this["meta"]) => string),
+    errorCode?: string
   ): FluentChain<CheckedType, CheckedType, this["meta"], this["__transforms"]> {
     return this.transform((prev) => {
       if (checker(prev)) return prev;
-      // TODO: throw a better error
       const getMsg = () => {
         if (typeof message === "string") return message;
         if (typeof message === "function") return message(this.meta);
       };
       const msg = getMsg();
-      throw new Error(msg ? "Validation failed: " + msg : "Validation failed");
+      throw new FluentError(
+        errorCode ?? "unknown_type_validation_error",
+        msg
+          ? msg
+          : (this.meta as any)?.errorMessages?.unknown_type_validation_error(
+              this.meta
+            ) ?? "Invalid type"
+      );
     }) as any;
   }
 
@@ -308,7 +322,15 @@ const makeFluentBuilder = <
   return builder as any;
 };
 
-export const fluent = makeFluentBuilder({}, {});
+export const fluent = makeFluentBuilder(
+  {},
+  {
+    errorMessages: {
+      unknown_validation_error: (meta: any) => "Validation failed",
+      unknown_type_validation_error: (meta: any) => "Invalid type",
+    },
+  }
+);
 
 export type Fluent<Output = any, Input = any> = FluentPipeline<
   Output | Promise<Output>,

@@ -6,7 +6,8 @@ import { EmptyFluent, Fluent } from "../core";
 function string<This extends EmptyFluent>(this: This, message?: string) {
   return this.checkType(
     (input): input is string => typeof input === "string",
-    (meta: any) => message ?? meta.errorMessages.string_type(meta)
+    (meta: any) => message ?? meta.errorMessages.string_type(meta),
+    "string_type"
   );
 }
 string.errorKey = "string_type" as const;
@@ -20,7 +21,8 @@ function minLength<This extends Fluent<string | any[]>>(
 ) {
   return this.check(
     (data) => data.length >= min,
-    (meta: any) => message ?? meta.errorMessages.min_length(meta, min)
+    (meta: any) => message ?? meta.errorMessages.min_length(meta, min),
+    "min_length"
   );
 }
 minLength.errorKey = "min_length" as const;
