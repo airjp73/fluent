@@ -4,7 +4,7 @@ import { FluentPipeline } from "../core";
 import { expectType } from "../testUtils";
 
 it("should support optional values", () => {
-  const s = e().optional().string().minLength(5, "too short");
+  const s = e().optional().string().minChars(5, "too short");
 
   expectType<FluentPipeline<string, undefined, string | undefined, any, any>>(
     s

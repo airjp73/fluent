@@ -360,7 +360,7 @@ it("should be able to customize error handlers", () => {
 });
 
 it("should throw FluentErrors when validations fail", () => {
-  const validator = e().string().minLength(5);
+  const validator = e().string().minChars(5);
 
   // `toThrow` won't check the `code` property, so we have to do this
   const getError = (func: () => any) => {
@@ -373,16 +373,13 @@ it("should throw FluentErrors when validations fail", () => {
 
   expect(getError(() => validator.validate("foo"))).toEqual(
     new FluentError(
-      e.__transforms.minLength.errorKey,
-      e.__transforms.minLength.defaultErrorMessage({}, 5)
+      "min_chars",
+      e.__transforms.minChars.errors.min_chars({}, 5)
     )
   );
 
   expect(getError(() => validator.validate(1))).toEqual(
-    new FluentError(
-      e.__transforms.string.errorKey,
-      e.__transforms.string.defaultErrorMessage({})
-    )
+    new FluentError("string_type", e.__transforms.string.errors.string_type({}))
   );
 });
 

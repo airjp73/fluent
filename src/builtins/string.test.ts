@@ -36,7 +36,7 @@ it("should fail for non-strings", () => {
 });
 
 it("should validate min length", () => {
-  expect(() => e().string().minLength(5).validate("foo")).toThrow(
+  expect(() => e().string().minChars(5).validate("foo")).toThrow(
     "Must be at least 5 characters"
   );
 });

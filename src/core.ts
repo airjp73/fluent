@@ -1,4 +1,9 @@
-import { Merge, OverloadToTuple, UnionToIntersection } from "./typeUtils";
+import {
+  Merge,
+  MergeIntersection,
+  OverloadToTuple,
+  UnionToIntersection,
+} from "./typeUtils";
 import { FluentError, ShortCircuit } from "./errors";
 
 export type NoData = void;
@@ -290,15 +295,15 @@ const makeFluentPipeline = <
     pipelineSteps
   ) as any;
 
-type ExtractErrorKeys<T extends TransformObject> = UnionToIntersection<
+type ExtractErrorDefinitions<T extends TransformObject> = UnionToIntersection<
   {
     [K in keyof T]: T[K] extends {
-      errorKey: string | symbol;
-      defaultErrorMessage?: string | ((...args: any[]) => string);
+      errors: infer Errors extends Record<
+        string | symbol,
+        string | ((...args: any[]) => string)
+      >;
     }
-      ? {
-          [ErrorKey in T[K]["errorKey"]]: T[K]["defaultErrorMessage"];
-        }
+      ? Errors
       : never;
   }[keyof T]
 >;
@@ -329,7 +334,7 @@ interface FluentBuilder<
       {
         errorMessages: Merge<
           Meta["errorMessages"],
-          ExtractErrorKeys<NewTransforms>
+          ExtractErrorDefinitions<NewTransforms>
         >;
       }
     >
@@ -374,8 +379,10 @@ const makeFluentBuilder = <
   builder.extend = (newTransforms: TransformObject) => {
     const transformErrorMessages = Object.values(newTransforms).reduce(
       (acc: any, val: any) => {
-        if ((val as any).errorKey) {
-          acc[val.errorKey] = val.defaultErrorMessage;
+        if ((val as any).errors) {
+          Object.entries((val as any).errors).forEach(([key, msg]) => {
+            acc[key] = msg;
+          });
         }
         return acc;
       },
