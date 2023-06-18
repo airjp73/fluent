@@ -276,7 +276,13 @@ it("should support tracking meta", () => {
   });
   const res = f(1).label("test").add(1);
   expectType<
-    FluentPipeline<number, void, number, { label: "test"; fluentInput: 1 }, any>
+    FluentPipeline<
+      number,
+      void,
+      number,
+      { label: "test"; pipelineType: "data-first"; fluentInput: 1 },
+      any
+    >
   >(res);
   expectType<number>(res.get()).toEqual(2);
 });

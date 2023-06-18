@@ -1,6 +1,7 @@
 import { Merge, OverloadToTuple, UnionToIntersection } from "./typeUtils";
 import { FluentError, ShortCircuit } from "./errors";
 
+export type PipelineTypes = "data-first" | "data-last";
 export type NoData = void;
 
 export type AnyFluentMethod = <
@@ -317,7 +318,7 @@ interface FluentBuilder<
     Data,
     NoData,
     Data,
-    Merge<Meta, { fluentInput: Data }>,
+    Merge<Meta, { pipelineType: "data-first"; fluentInput: Data }>,
     Methods
   >;
   (): FluentChain<NoData, NoData, NoData, Meta, Methods>;
@@ -328,6 +329,7 @@ interface FluentBuilder<
     Merge<
       Meta,
       {
+        pipelineType: "data-last";
         errorMessages: Merge<
           Meta["errorMessages"],
           ExtractErrorDefinitions<NewMethods>

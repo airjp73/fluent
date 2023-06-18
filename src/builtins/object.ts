@@ -2,7 +2,7 @@ import { EmptyFluent, FluentError, FluentPipeline, Infer } from "..";
 
 export type FluentObjectShape = Record<
   string | number | symbol,
-  FluentPipeline<any, any, any, any, any>
+  FluentPipeline<any, any, any, { pipelineType: "data-last" }, any>
 >;
 
 type InferShape<Shape extends FluentObjectShape> =
