@@ -13,6 +13,15 @@ const getErrorDetails = (func: () => any) => {
   }
 };
 
+it("should not allow properties to already have an input", () => {
+  const v = e().object({
+    // @ts-expect-error
+    name: e("bob").minChars(1),
+  });
+
+  expect(v.validate({ name: "jim" })).toEqual({ name: "jim" });
+});
+
 it("should validate object properties", () => {
   const v = e().object({
     name: e().string().minChars(5),
