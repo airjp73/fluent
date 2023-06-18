@@ -14,7 +14,7 @@ import { expectType } from "./testUtils";
 import { apply, get } from "./builtins/terminals";
 import { label } from "./builtins/forms";
 import { e } from "./preconfigured/everything";
-import { FluentError } from "./errors";
+import { FluentError, ShortCircuit } from "./errors";
 
 /**
  * Does this have docs, too?
@@ -66,6 +66,15 @@ function stringToNum<This extends Fluent<string>>(this: This) {
 }
 function promisify<This extends Fluent<unknown>>(this: This) {
   return this.transform((data) => Promise.resolve(data));
+}
+
+export function earlyReturnNumber<This extends Fluent<string | number>>(
+  this: This
+) {
+  return this.shortCircuit((input) => {
+    if (typeof input === "number") return new ShortCircuit(input);
+    return input;
+  });
 }
 
 function num<This extends EmptyFluent>(this: This) {
@@ -253,13 +262,7 @@ it("should support tracking meta", () => {
   });
   const res = f(1).label("test").add(1);
   expectType<
-    FluentPipeline<
-      number,
-      number,
-      unknown,
-      { label: "test"; fluentInput: 1 },
-      any
-    >
+    FluentPipeline<number, void, number, { label: "test"; fluentInput: 1 }, any>
   >(res);
   expectType<number>(res.get()).toEqual(2);
 });
@@ -364,6 +367,28 @@ it("should throw FluentErrors when validations fail", () => {
       e.__transforms.string.defaultErrorMessage({})
     )
   );
+});
+
+it("should be able to perform short-circuit evaluation", () => {
+  const v = e.extend({ earlyReturnNumber, concat });
+  const res = v("hi" as "hi" | number)
+    .earlyReturnNumber()
+    .concat(" world");
+
+  expectType<FluentPipeline<"hi world", number, "hi" | number, {}, any>>(res);
+  expectType<"hi world" | number>(res.get()).toEqual("hi world");
+
+  const res2 = v("hi" as string | number)
+    .earlyReturnNumber()
+    .concat(" world");
+  expectType<FluentPipeline<string, number, string | number, {}, any>>(res2);
+  expectType<string | number>(res2.get()).toEqual("hi world");
+
+  const res3 = v(123 as string | number)
+    .earlyReturnNumber()
+    .concat(" world");
+  expectType<FluentPipeline<string, number, string | number, {}, any>>(res3);
+  expectType<string | number>(res3.get()).toEqual(123);
 });
 
 describe("toFluentMethod", () => {

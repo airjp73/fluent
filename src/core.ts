@@ -1,5 +1,5 @@
 import { Merge, OverloadToTuple, UnionToIntersection } from "./typeUtils";
-import { FluentError } from "./errors";
+import { FluentError, ShortCircuit } from "./errors";
 
 export type NoData = void;
 
@@ -57,6 +57,10 @@ type TransformsForDataType<Transforms extends TransformObject, DataType> = {
   [K in TransformKeysAcceptingDataType<Transforms, DataType>]: Transforms[K];
 };
 
+type TerminalOutput<Output, EarlyOutput> = Output extends Promise<any>
+  ? Promise<Awaited<EarlyOutput> | Awaited<Output>>
+  : Output | EarlyOutput;
+
 export class FluentPipeline<
   Output,
   EarlyOutput,
@@ -64,6 +68,8 @@ export class FluentPipeline<
   Meta extends {},
   Transforms extends TransformObject
 > {
+  public __innerDataType: Awaited<this["__outputType"]>;
+
   constructor(
     public __outputType: Output,
     public __earlyOutputType: EarlyOutput,
@@ -72,6 +78,7 @@ export class FluentPipeline<
     public __transforms: Transforms,
     protected pipelineSteps: Function[]
   ) {
+    this.__innerDataType = undefined as any;
     Object.entries(__transforms).forEach(([key, value]) => {
       // @ts-ignore
       this[key] = value;
@@ -79,7 +86,7 @@ export class FluentPipeline<
   }
 
   public transform<const ChainedData>(
-    func: (input: Awaited<FluentData<this>>) => ChainedData
+    func: (input: this["__innerDataType"]) => ChainedData
   ): FluentChain<
     this["__outputType"] extends Promise<any>
       ? Promise<Awaited<ChainedData>>
@@ -96,22 +103,80 @@ export class FluentPipeline<
     return makeFluentPipeline(
       undefined,
       undefined,
-      [],
+      undefined,
       this.meta,
       this.__transforms,
       nextPipeline
     ) as any;
   }
 
+  protected shortCircuit<
+    Keep extends this["__innerDataType"],
+    Abort extends this["__innerDataType"]
+  >(
+    func: (input: this["__innerDataType"]) => Keep | ShortCircuit<Abort>
+  ): FluentChain<
+    Exclude<
+      this["__outputType"] extends Promise<any>
+        ? Promise<Awaited<Keep>>
+        : Awaited<Keep>,
+      Abort
+    >,
+    Exclude<this["__earlyOutputType"] | Abort, void>,
+    this["__inputType"],
+    this["meta"],
+    this["__transforms"]
+  > {
+    const getEarlyReturns = (data: any) => {
+      const res = func(data);
+      if (res instanceof ShortCircuit) throw res;
+      return res;
+    };
+    const nextPipeline = [...this.pipelineSteps, getEarlyReturns];
+    return makeFluentPipeline(
+      undefined,
+      undefined,
+      undefined,
+      this.meta,
+      this.__transforms,
+      nextPipeline
+    ) as any;
+  }
+
+  protected runFluentPipeline(input: any): TerminalOutput<Output, EarlyOutput> {
+    if (this.pipelineSteps.length === 0)
+      throw new Error("Cannot run empty fluent api");
+
+    const handleError = (error: unknown) => {
+      if (error instanceof ShortCircuit) return error.value;
+      throw error;
+    };
+
+    let current = input;
+
+    try {
+      for (const fn of this.pipelineSteps) {
+        // How to short circuit with promises?
+        if (current instanceof Promise) current = current.then(fn as any);
+        else current = fn(current);
+      }
+    } catch (err) {
+      return handleError(err);
+    }
+
+    if (current instanceof Promise) return current.catch(handleError) as any;
+    return current;
+  }
+
   public check<Result extends boolean | Promise<boolean>>(
-    checker: (input: FluentData<this>) => Result,
+    checker: (input: Awaited<Output>) => Result,
     message?:
       | string
       | ((meta: this["meta"], val: this["__outputType"]) => string),
     errorCode?: string
   ): FluentChain<
     Result extends Promise<boolean>
-      ? Promise<FluentData<this>>
+      ? Promise<Awaited<this["__outputType"]>>
       : this["__outputType"],
     this["__earlyOutputType"],
     this["__inputType"],
@@ -254,8 +319,8 @@ interface FluentBuilder<
   __meta: Meta;
   <const Data>(data: Data): FluentChain<
     Data,
+    NoData,
     Data,
-    unknown,
     Merge<Meta, { fluentInput: Data }>,
     Transforms
   >;
@@ -360,15 +425,15 @@ export const fluent = makeFluentBuilder(
 
 export type Fluent<Output = any, Input = any> = FluentPipeline<
   Output | Promise<Output>,
-  any,
+  unknown,
   Input,
   {},
   {}
 >;
 export type EmptyFluent = Fluent<NoData, NoData>;
-export type FluentData<FluentInstance extends Fluent> = Awaited<
-  FluentInstance["__outputType"]
->;
+export type FluentData<
+  FluentInstance extends FluentPipeline<any, any, any, any, any>
+> = Awaited<FluentInstance["__outputType"]>;
 export type FluentInput<FluentInstance extends Fluent> =
   FluentInstance["__inputType"];
 
