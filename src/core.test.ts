@@ -11,7 +11,7 @@ import {
   NoData,
 } from "./core";
 import { expectType } from "./testUtils";
-import { apply, get } from "./builtins/terminals";
+import { apply, get, validate } from "./builtins/terminals";
 import { label } from "./builtins/forms";
 import { e } from "./preconfigured/everything";
 import { FluentError, ShortCircuit } from "./errors";
@@ -27,20 +27,20 @@ function concat<
   suff: Suff
 ): FluentChain<
   [...FluentData<This>, ...Suff],
-  This["__earlyOutputType"],
+  This["t_earlyOutput"],
   FluentInput<This>,
   This["meta"],
-  This["__transforms"]
+  This["fluentMethods"]
 >;
 function concat<This extends Fluent<string>, Suff extends string>(
   this: This,
   suff: Suff
 ): FluentChain<
   `${FluentData<This>}${Suff}`,
-  This["__earlyOutputType"],
+  This["t_earlyOutput"],
   FluentInput<This>,
   This["meta"],
-  This["__transforms"]
+  This["fluentMethods"]
 >;
 function concat(
   this: Fluent<string | readonly any[]>,
@@ -295,11 +295,11 @@ it("should lock-in meta attributes statically", () => {
 });
 
 it("should support chaining with promises", async () => {
-  const f = fluent.extend({ apply });
+  const f = fluent.extend({ validate });
   const validator = f()
     .transform(() => Promise.resolve(123))
     .transform((a) => a + 2);
-  expectType<number>(await validator.apply()).toEqual(125);
+  expectType<number>(await validator.validate(123)).toEqual(125);
 });
 
 it("should support chaining checks with promises", async () => {

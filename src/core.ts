@@ -68,33 +68,33 @@ export class FluentPipeline<
   Meta extends {},
   Transforms extends TransformObject
 > {
-  public __innerDataType: Awaited<this["__outputType"]>;
+  public t_innerData: Awaited<this["t_output"]>;
 
   constructor(
-    public __outputType: Output,
-    public __earlyOutputType: EarlyOutput,
-    public __inputType: Input,
+    public t_output: Output,
+    public t_earlyOutput: EarlyOutput,
+    public t_input: Input,
     public meta: Meta,
-    public __transforms: Transforms,
+    public fluentMethods: Transforms,
     protected pipelineSteps: Function[]
   ) {
-    this.__innerDataType = undefined as any;
-    Object.entries(__transforms).forEach(([key, value]) => {
+    this.t_innerData = undefined as any;
+    Object.entries(fluentMethods).forEach(([key, value]) => {
       // @ts-ignore
       this[key] = value;
     });
   }
 
   public transform<const ChainedData>(
-    func: (input: this["__innerDataType"]) => ChainedData
+    func: (input: this["t_innerData"]) => ChainedData
   ): FluentChain<
-    this["__outputType"] extends Promise<any>
+    this["t_output"] extends Promise<any>
       ? Promise<Awaited<ChainedData>>
       : ChainedData,
-    this["__earlyOutputType"],
-    this["__inputType"],
+    this["t_earlyOutput"],
+    this["t_input"],
     this["meta"],
-    this["__transforms"]
+    this["fluentMethods"]
   > {
     const nextPipeline = [
       ...this.pipelineSteps,
@@ -105,27 +105,27 @@ export class FluentPipeline<
       undefined,
       undefined,
       this.meta,
-      this.__transforms,
+      this.fluentMethods,
       nextPipeline
     ) as any;
   }
 
   protected shortCircuit<
-    Keep extends this["__innerDataType"],
-    Abort extends this["__innerDataType"]
+    Keep extends this["t_innerData"],
+    Abort extends this["t_innerData"]
   >(
-    func: (input: this["__innerDataType"]) => Keep | ShortCircuit<Abort>
+    func: (input: this["t_innerData"]) => Keep | ShortCircuit<Abort>
   ): FluentChain<
     Exclude<
-      this["__outputType"] extends Promise<any>
+      this["t_output"] extends Promise<any>
         ? Promise<Awaited<Keep>>
         : Awaited<Keep>,
       Abort
     >,
-    Exclude<this["__earlyOutputType"] | Abort, void>,
-    this["__inputType"],
+    Exclude<this["t_earlyOutput"] | Abort, void>,
+    this["t_input"],
     this["meta"],
-    this["__transforms"]
+    this["fluentMethods"]
   > {
     const getEarlyReturns = (data: any) => {
       const res = func(data);
@@ -138,7 +138,7 @@ export class FluentPipeline<
       undefined,
       undefined,
       this.meta,
-      this.__transforms,
+      this.fluentMethods,
       nextPipeline
     ) as any;
   }
@@ -170,18 +170,16 @@ export class FluentPipeline<
 
   public check<Result extends boolean | Promise<boolean>>(
     checker: (input: Awaited<Output>) => Result,
-    message?:
-      | string
-      | ((meta: this["meta"], val: this["__outputType"]) => string),
+    message?: string | ((meta: this["meta"], val: this["t_output"]) => string),
     errorCode?: string
   ): FluentChain<
     Result extends Promise<boolean>
-      ? Promise<Awaited<this["__outputType"]>>
-      : this["__outputType"],
-    this["__earlyOutputType"],
-    this["__inputType"],
+      ? Promise<Awaited<this["t_output"]>>
+      : this["t_output"],
+    this["t_earlyOutput"],
+    this["t_input"],
     this["meta"],
-    this["__transforms"]
+    this["fluentMethods"]
   > {
     return this.transform((prev) => {
       const res = checker(prev);
@@ -216,10 +214,10 @@ export class FluentPipeline<
     errorCode?: string
   ): FluentChain<
     CheckedType,
-    this["__earlyOutputType"],
+    this["t_earlyOutput"],
     CheckedType,
     this["meta"],
-    this["__transforms"]
+    this["fluentMethods"]
   > {
     return this.transform((prev) => {
       if (checker(prev)) return prev;
@@ -242,18 +240,18 @@ export class FluentPipeline<
   protected updateMeta<NewMeta extends {}>(
     meta: NewMeta
   ): FluentChain<
-    this["__outputType"],
-    this["__earlyOutputType"],
-    this["__inputType"],
+    this["t_output"],
+    this["t_earlyOutput"],
+    this["t_input"],
     Merge<this["meta"], NewMeta>,
-    this["__transforms"]
+    this["fluentMethods"]
   > {
     return makeFluentPipeline(
-      this.__outputType,
-      this.__earlyOutputType,
-      this.__inputType,
+      this.t_output,
+      this.t_earlyOutput,
+      this.t_input,
       { ...this.meta, ...meta },
-      this.__transforms,
+      this.fluentMethods,
       this.pipelineSteps
     ) as any;
   }
@@ -433,9 +431,9 @@ export type Fluent<Output = any, Input = any> = FluentPipeline<
 export type EmptyFluent = Fluent<NoData, NoData>;
 export type FluentData<
   FluentInstance extends FluentPipeline<any, any, any, any, any>
-> = Awaited<FluentInstance["__outputType"]>;
+> = Awaited<FluentInstance["t_output"]>;
 export type FluentInput<FluentInstance extends Fluent> =
-  FluentInstance["__inputType"];
+  FluentInstance["t_input"];
 
 export const toFluentMethod = <Data, Args extends any[], Return>(
   fn: (data: Data, ...args: Args) => Return

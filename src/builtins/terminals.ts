@@ -7,7 +7,7 @@ import { Fluent, FluentPipeline, FluentInput } from "../core";
 export function apply<This extends Fluent>(
   this: This,
   input: FluentInput<This>
-): This["__outputType"] {
+): This["t_output"] {
   return this.runFluentPipeline(input);
 }
 
@@ -19,7 +19,7 @@ export function apply<This extends Fluent>(
 export function validate<This extends Fluent>(
   this: This,
   input: unknown
-): This["__outputType"] {
+): This["t_output"] {
   return this.runFluentPipeline(input);
 }
 
@@ -30,7 +30,7 @@ export function validate<This extends Fluent>(
  */
 export function get<
   This extends FluentPipeline<any, any, any, { fluentInput: any }, any>
->(this: This): This["__outputType"] {
+>(this: This): This["t_output"] {
   const val = (this.meta as any).fluentInput;
   return this.runFluentPipeline(val);
 }
