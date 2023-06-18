@@ -26,6 +26,11 @@ export class FluentError extends Error {
       childIssues: this.childIssues.map((issue) => issue.toDetails()),
     };
   }
+
+  public prependPath(...path: (string | number)[]) {
+    this.path.unshift(...path);
+    this.childIssues.forEach((issue) => issue.prependPath(...path));
+  }
 }
 
 export class ShortCircuit<T> {

@@ -70,7 +70,7 @@ function object<This extends EmptyFluent, Shape extends FluentObjectShape>(
         object.errors.object_shape({}),
         [],
         Object.values(errors).map((error, index) => {
-          error.path.unshift(errorKeys[index]);
+          error.prependPath(errorKeys[index]);
           return error;
         })
       );
