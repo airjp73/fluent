@@ -1,4 +1,5 @@
 import { EmptyFluent, FluentError, FluentPipeline, Infer } from "..";
+import { MaybePromise } from "../util/maybePromise";
 
 export type FluentObjectShape = Record<
   string | number | symbol,
@@ -28,29 +29,19 @@ function object<This extends EmptyFluent, Shape extends FluentObjectShape>(
     (meta: any) => message ?? meta.errorMessages.object_type(meta),
     "object_type"
   ).transform((input): InferShape<Shape> => {
-    const results: Record<string, any> = {};
-    const errors: Record<string, FluentError> = {};
+    const keys = Object.keys(shape);
+    const maybePromises = Object.values(shape).map((value, index) => {
+      const key = keys[index];
+      const propInput = (input as any)[key];
+      return MaybePromise.of(() => value.runFluentPipeline(propInput));
+    });
 
-    const handleError = (err: unknown, key: any) => {
-      if (err instanceof FluentError) errors[key] = err;
-      else throw err;
-    };
+    return MaybePromise.allSettled(maybePromises)
+      .then((promiseResult) => {
+        const results: Record<string, any> = {};
+        const errors: Record<string, FluentError> = {};
 
-    for (const [key, value] of Object.entries(shape)) {
-      const prop = (input as any)[key];
-      let validated;
-      try {
-        validated = value.runFluentPipeline(prop);
-        results[key] = validated;
-      } catch (err) {
-        handleError(err, key);
-      }
-    }
-
-    if (Object.values(results).some((prop) => prop instanceof Promise)) {
-      const keys = Object.keys(results);
-      Promise.allSettled(Object.values(results)).then((promiseResult) => {
-        promiseResult.forEach((result, index) => {
+        promiseResult.map((result, index) => {
           if (result.status === "rejected") {
             const key = keys[index];
             if (result.reason instanceof FluentError)
@@ -60,23 +51,23 @@ function object<This extends EmptyFluent, Shape extends FluentObjectShape>(
             results[keys[index]] = result.value;
           }
         });
-      }) as any;
-    }
 
-    const errorKeys = Object.keys(errors);
-    if (errorKeys.length > 0) {
-      throw new FluentError(
-        "object_shape",
-        object.errors.object_shape({}),
-        [],
-        Object.values(errors).map((error, index) => {
-          error.prependPath(errorKeys[index]);
-          return error;
-        })
-      );
-    }
+        const errorKeys = Object.keys(errors);
+        if (errorKeys.length > 0) {
+          throw new FluentError(
+            "object_shape",
+            object.errors.object_shape({}),
+            [],
+            Object.values(errors).map((error, index) => {
+              error.prependPath(errorKeys[index]);
+              return error;
+            })
+          );
+        }
 
-    return results as any;
+        return results as any;
+      })
+      .flatten();
   });
 }
 object.errors = {
