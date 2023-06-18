@@ -52,8 +52,13 @@ type MethodsForDataType<Methods extends MethodsObject, DataType> = {
 };
 
 type TerminalOutput<Current, EarlyOutput> = Current extends Promise<any>
-  ? Promise<Awaited<EarlyOutput> | Awaited<Current>>
+  ? Promise<void extends EarlyOutput ? Current : Current | EarlyOutput>
+  : void extends EarlyOutput
+  ? Current
   : Current | EarlyOutput;
+
+export type Infer<F extends FluentPipeline<any, any, any, any, any>> =
+  TerminalOutput<F["t_current"], F["t_earlyOutput"]>;
 
 export class FluentPipeline<
   Current,
@@ -136,7 +141,7 @@ export class FluentPipeline<
 
   protected runFluentPipeline(
     input: any
-  ): TerminalOutput<Current, EarlyOutput> {
+  ): TerminalOutput<this["t_current"], this["t_earlyOutput"]> {
     if (this.pipelineSteps.length === 0)
       throw new Error("Cannot run empty fluent pipeline");
 
