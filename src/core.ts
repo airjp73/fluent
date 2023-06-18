@@ -142,7 +142,7 @@ export class FluentPipeline<
 
   protected runFluentPipeline(input: any): TerminalOutput<Output, EarlyOutput> {
     if (this.pipelineSteps.length === 0)
-      throw new Error("Cannot run empty fluent api");
+      throw new Error("Cannot run empty fluent pipeline");
 
     const handleError = (error: unknown) => {
       if (error instanceof ShortCircuit) return error.value;

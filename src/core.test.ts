@@ -100,6 +100,23 @@ it("should create an api and use it", () => {
   f(1).num();
 });
 
+it("should not throw if no input", () => {
+  const f = fluent.extend({
+    add,
+    subtract,
+    get,
+  });
+  // @ts-expect-error
+  expect(f().add(5).subtract(2).get()).toEqual(NaN);
+  // @ts-expect-error
+  expect(e().optional().get()).toEqual(undefined);
+});
+
+it("should throw if no steps", () => {
+  // @ts-expect-error
+  expect(() => e().get()).toThrow("Cannot run empty fluent pipeline");
+});
+
 it("should be able to continue chaining after a type change", () => {
   const f = fluent.extend({
     stringToNum,
