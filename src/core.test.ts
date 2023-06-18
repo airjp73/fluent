@@ -8,6 +8,7 @@ import {
   FluentInput,
   fluent,
   toFluentMethod,
+  NoData,
 } from "./core";
 import { expectType } from "./testUtils";
 import { apply, get } from "./builtins/terminals";
@@ -26,6 +27,7 @@ function concat<
   suff: Suff
 ): FluentChain<
   [...FluentData<This>, ...Suff],
+  This["__earlyOutputType"],
   FluentInput<This>,
   This["meta"],
   This["__transforms"]
@@ -35,6 +37,7 @@ function concat<This extends Fluent<string>, Suff extends string>(
   suff: Suff
 ): FluentChain<
   `${FluentData<This>}${Suff}`,
+  This["__earlyOutputType"],
   FluentInput<This>,
   This["meta"],
   This["__transforms"]
@@ -250,7 +253,13 @@ it("should support tracking meta", () => {
   });
   const res = f(1).label("test").add(1);
   expectType<
-    FluentPipeline<number, unknown, { label: "test"; fluentInput: 1 }, any>
+    FluentPipeline<
+      number,
+      number,
+      unknown,
+      { label: "test"; fluentInput: 1 },
+      any
+    >
   >(res);
   expectType<number>(res.get()).toEqual(2);
 });
@@ -274,7 +283,9 @@ it("should lock-in meta attributes statically", () => {
       (meta) => meta.label
     )
     .label("baz");
-  expectType<FluentPipeline<number, unknown, { label: "baz" }, any>>(validator);
+  expectType<FluentPipeline<number, NoData, unknown, { label: "baz" }, any>>(
+    validator
+  );
   expectType<number>(validator.apply(7)).toEqual(7);
   expectType(() => validator.apply(1)).toThrow("foo");
   expectType(() => validator.apply(11)).toThrow("bar");

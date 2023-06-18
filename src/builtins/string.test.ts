@@ -1,13 +1,14 @@
 import { expect, it } from "bun:test";
 import { e } from "../preconfigured/everything";
 import { expectType } from "../testUtils";
-import { FluentPipeline } from "../core";
+import { FluentPipeline, NoData } from "../core";
 
 it("should succeed for strings", () => {
   const t = e().string();
   expectType<
     FluentPipeline<
       string,
+      NoData,
       string,
       {
         errorMessages: Record<

@@ -4,7 +4,7 @@ import { FluentError } from "./errors";
 export type NoData = void;
 
 export type AnyTransformFunction = <
-  This extends FluentPipeline<any, any, any, any>
+  This extends FluentPipeline<any, any, any, any, any>
 >(
   this: This,
   ...args: any[]
@@ -13,12 +13,13 @@ export type AnyTransformFunction = <
 export interface TransformObject extends Record<string, AnyTransformFunction> {}
 
 export type TransformData<T> = Awaited<
-  ThisParameterType<T> extends FluentPipeline<infer Data, any, any, any>
+  ThisParameterType<T> extends FluentPipeline<infer Data, any, any, any, any>
     ? Data
     : never
 >;
 
 type TransformTransforms<T> = ThisParameterType<T> extends FluentPipeline<
+  any,
   any,
   any,
   any,
@@ -58,12 +59,14 @@ type TransformsForDataType<Transforms extends TransformObject, DataType> = {
 
 export class FluentPipeline<
   Output,
+  EarlyOutput,
   Input,
   Meta extends {},
   Transforms extends TransformObject
 > {
   constructor(
     public __outputType: Output,
+    public __earlyOutputType: EarlyOutput,
     public __inputType: Input,
     public meta: Meta,
     public __transforms: Transforms,
@@ -81,6 +84,7 @@ export class FluentPipeline<
     this["__outputType"] extends Promise<any>
       ? Promise<Awaited<ChainedData>>
       : ChainedData,
+    this["__earlyOutputType"],
     this["__inputType"],
     this["meta"],
     this["__transforms"]
@@ -90,6 +94,7 @@ export class FluentPipeline<
       (data: any) => (data instanceof Promise ? data.then(func) : func(data)),
     ];
     return makeFluentPipeline(
+      undefined,
       undefined,
       [],
       this.meta,
@@ -108,6 +113,7 @@ export class FluentPipeline<
     Result extends Promise<boolean>
       ? Promise<FluentData<this>>
       : this["__outputType"],
+    this["__earlyOutputType"],
     this["__inputType"],
     this["meta"],
     this["__transforms"]
@@ -143,7 +149,13 @@ export class FluentPipeline<
     checker: (input: unknown) => input is CheckedType,
     message?: string | ((meta: this["meta"]) => string),
     errorCode?: string
-  ): FluentChain<CheckedType, CheckedType, this["meta"], this["__transforms"]> {
+  ): FluentChain<
+    CheckedType,
+    this["__earlyOutputType"],
+    CheckedType,
+    this["meta"],
+    this["__transforms"]
+  > {
     return this.transform((prev) => {
       if (checker(prev)) return prev;
       const getMsg = () => {
@@ -166,12 +178,14 @@ export class FluentPipeline<
     meta: NewMeta
   ): FluentChain<
     this["__outputType"],
+    this["__earlyOutputType"],
     this["__inputType"],
     Merge<this["meta"], NewMeta>,
     this["__transforms"]
   > {
     return makeFluentPipeline(
       this.__outputType,
+      this.__earlyOutputType,
       this.__inputType,
       { ...this.meta, ...meta },
       this.__transforms,
@@ -182,29 +196,39 @@ export class FluentPipeline<
 
 export type FluentChain<
   Output,
+  EarlyOutput,
   Input,
   Meta extends {},
   Transforms extends TransformObject
-> = FluentPipeline<Output, Input, Meta, Transforms> &
+> = FluentPipeline<Output, EarlyOutput, Input, Meta, Transforms> &
   TransformsForDataType<Transforms, Output>;
 
-export type AnyFluentChain = FluentPipeline<any, any, any, any> &
+export type AnyFluentChain = FluentPipeline<any, any, any, any, any> &
   TransformObject;
 
 const makeFluentPipeline = <
   Output,
+  EarlyOutput,
   Input,
   Meta extends {},
   Transforms extends TransformObject
 >(
   data: Output,
+  earlyOutput: EarlyOutput,
   input: Input,
   meta: Meta,
   transforms: Transforms,
   pipelineSteps: Function[] = []
-): FluentPipeline<Output, Input, Meta, Transforms> &
+): FluentPipeline<Output, EarlyOutput, Input, Meta, Transforms> &
   TransformsForDataType<Transforms, Output> =>
-  new FluentPipeline(data, input, meta, transforms, pipelineSteps) as any;
+  new FluentPipeline(
+    data,
+    earlyOutput,
+    input,
+    meta,
+    transforms,
+    pipelineSteps
+  ) as any;
 
 type ExtractErrorKeys<T extends TransformObject> = UnionToIntersection<
   {
@@ -230,11 +254,12 @@ interface FluentBuilder<
   __meta: Meta;
   <const Data>(data: Data): FluentChain<
     Data,
+    Data,
     unknown,
     Merge<Meta, { fluentInput: Data }>,
     Transforms
   >;
-  (): FluentChain<NoData, NoData, Meta, Transforms>;
+  (): FluentChain<NoData, NoData, NoData, Meta, Transforms>;
   extend<NewTransforms extends TransformObject>(
     transforms: NewTransforms
   ): FluentBuilder<
@@ -273,6 +298,7 @@ const makeFluentBuilder = <
 ): FluentBuilder<Transforms, Meta> => {
   function builder(maybeData?: any) {
     return new FluentPipeline(
+      undefined,
       undefined,
       undefined,
       {
@@ -334,6 +360,7 @@ export const fluent = makeFluentBuilder(
 
 export type Fluent<Output = any, Input = any> = FluentPipeline<
   Output | Promise<Output>,
+  any,
   Input,
   {},
   {}

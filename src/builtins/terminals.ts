@@ -45,7 +45,7 @@ export function validate<This extends Fluent>(
  * @returns - The result of the fluent pipeline.
  */
 export function get<
-  This extends FluentPipeline<any, any, { fluentInput: any }, any>
+  This extends FluentPipeline<any, any, any, { fluentInput: any }, any>
 >(this: This): This["__outputType"] {
   if (this.pipelineSteps.length === 0)
     throw new Error("Cannot get value from empty fluent api");
