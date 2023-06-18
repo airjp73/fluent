@@ -125,6 +125,13 @@ it("should be able to continue chaining after a type change", () => {
 
   const res = f("1").stringToNum().add(5).numToString().concat("2").get();
   expectType<string>(res).toEqual("62");
+
+  const e2 = e.extend({
+    stringToNum,
+    numToString,
+  });
+  const res2 = e2(1234).min(1000).numToString().minChars(4).get();
+  expectType<string>(res2).toEqual("1234");
 });
 
 it("should have type errors if you try to chain the wrong things", () => {
