@@ -230,7 +230,7 @@ export class FluentPipeline<
     }) as any;
   }
 
-  protected updateMeta<NewMeta extends {}>(
+  protected updateMeta<const NewMeta extends {}>(
     meta: NewMeta
   ): FluentChain<
     this["t_current"],

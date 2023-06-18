@@ -6,9 +6,15 @@ import { expectType } from "../testUtils";
 it("should support optional values", () => {
   const s = e().optional().string().minChars(5, "too short");
 
-  expectType<FluentPipeline<string, undefined, string | undefined, any, any>>(
-    s
-  );
+  expectType<
+    FluentPipeline<
+      string,
+      undefined,
+      string | undefined,
+      { optional: true },
+      any
+    >
+  >(s);
   expectType<string | undefined>(s.apply(undefined)).toEqual(undefined);
   expectType<string | undefined>(s.apply("hello")).toEqual("hello");
   expect(() => s.apply("hi")).toThrow("too short");
@@ -21,7 +27,7 @@ it("should support optional values", () => {
 it("should support required errors", () => {
   const s = e().required().string();
 
-  expectType<FluentPipeline<string, void, string, any, any>>(s);
+  expectType<FluentPipeline<string, void, string, { required: true }, any>>(s);
   expectType<string>(s.validate("hello"));
   expect(() => s.validate(undefined)).toThrow(
     e.__meta.errorMessages.required({})
