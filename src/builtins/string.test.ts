@@ -40,3 +40,9 @@ it("should validate min length", () => {
     "Must be at least 5 characters"
   );
 });
+
+it("should validate max length", () => {
+  expect(() => e().string().maxChars(5).validate("foo123")).toThrow(
+    "Must be no more than 5 characters"
+  );
+});

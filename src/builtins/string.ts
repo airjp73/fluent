@@ -29,8 +29,26 @@ function minChars<This extends Fluent<string | any[]>>(
 minChars.errors = {
   min_chars: (meta: any, min: number) =>
     "label" in meta
-      ? `${meta.label} must be at least ${meta.min} characters`
+      ? `${meta.label} must be at least ${min} characters`
       : `Must be at least ${min} characters`,
 };
 
-export { string, minChars as minChars };
+function maxChars<This extends Fluent<string | any[]>>(
+  this: This,
+  max: number,
+  message?: string
+) {
+  return this.check(
+    (data) => data.length <= max,
+    (meta: any) => message ?? meta.errorMessages.max_chars(meta, max),
+    "max_chars"
+  );
+}
+maxChars.errors = {
+  max_chars: (meta: any, max: number) =>
+    "label" in meta
+      ? `${meta.label} must be no more than ${max} characters`
+      : `Must be no more than ${max} characters`,
+};
+
+export { string, minChars, maxChars };
