@@ -110,10 +110,7 @@ export class FluentPipeline<
     ) as any;
   }
 
-  protected shortCircuit<
-    Keep extends this["t_innerData"],
-    Abort extends this["t_innerData"]
-  >(
+  protected shortCircuit<Keep extends this["t_innerData"], Abort>(
     func: (input: this["t_innerData"]) => Keep | ShortCircuit<Abort>
   ): FluentChain<
     Exclude<
@@ -122,8 +119,8 @@ export class FluentPipeline<
         : Awaited<Keep>,
       Abort
     >,
-    Exclude<this["t_earlyOutput"] | Abort, void>,
-    this["t_input"],
+    void extends this["t_earlyOutput"] ? Abort : this["t_earlyOutput"] | Abort,
+    void extends this["t_input"] ? Abort : this["t_input"],
     this["meta"],
     this["fluentMethods"]
   > {
@@ -215,7 +212,7 @@ export class FluentPipeline<
   ): FluentChain<
     CheckedType,
     this["t_earlyOutput"],
-    CheckedType,
+    void extends this["t_input"] ? CheckedType : this["t_input"] | CheckedType,
     this["meta"],
     this["fluentMethods"]
   > {
