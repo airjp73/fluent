@@ -56,21 +56,21 @@ type MethodsForDataType<Methods extends MethodsObject, DataType> = {
   [K in MethodKeysAcceptingDataType<Methods, DataType>]: Methods[K];
 };
 
-type TerminalOutput<Output, EarlyOutput> = Output extends Promise<any>
-  ? Promise<Awaited<EarlyOutput> | Awaited<Output>>
-  : Output | EarlyOutput;
+type TerminalOutput<Current, EarlyOutput> = Current extends Promise<any>
+  ? Promise<Awaited<EarlyOutput> | Awaited<Current>>
+  : Current | EarlyOutput;
 
 export class FluentPipeline<
-  Output,
+  Current,
   EarlyOutput,
   Input,
   Meta extends {},
   Methods extends MethodsObject
 > {
-  public t_innerData: Awaited<this["t_output"]>;
+  public t_innerData: Awaited<this["t_current"]>;
 
   constructor(
-    public t_output: Output,
+    public t_current: Current,
     public t_earlyOutput: EarlyOutput,
     public t_input: Input,
     public meta: Meta,
@@ -87,7 +87,7 @@ export class FluentPipeline<
   public transform<const ChainedData>(
     func: (input: this["t_innerData"]) => ChainedData
   ): FluentChain<
-    this["t_output"] extends Promise<any>
+    this["t_current"] extends Promise<any>
       ? Promise<Awaited<ChainedData>>
       : ChainedData,
     this["t_earlyOutput"],
@@ -113,7 +113,7 @@ export class FluentPipeline<
     func: (input: this["t_innerData"]) => Keep | ShortCircuit<Abort>
   ): FluentChain<
     Exclude<
-      this["t_output"] extends Promise<any>
+      this["t_current"] extends Promise<any>
         ? Promise<Awaited<Keep>>
         : Awaited<Keep>,
       Abort
@@ -139,7 +139,9 @@ export class FluentPipeline<
     ) as any;
   }
 
-  protected runFluentPipeline(input: any): TerminalOutput<Output, EarlyOutput> {
+  protected runFluentPipeline(
+    input: any
+  ): TerminalOutput<Current, EarlyOutput> {
     if (this.pipelineSteps.length === 0)
       throw new Error("Cannot run empty fluent pipeline");
 
@@ -165,13 +167,13 @@ export class FluentPipeline<
   }
 
   public check<Result extends boolean | Promise<boolean>>(
-    checker: (input: Awaited<Output>) => Result,
-    message?: string | ((meta: this["meta"], val: this["t_output"]) => string),
+    checker: (input: Awaited<Current>) => Result,
+    message?: string | ((meta: this["meta"], val: this["t_current"]) => string),
     errorCode?: string
   ): FluentChain<
     Result extends Promise<boolean>
-      ? Promise<Awaited<this["t_output"]>>
-      : this["t_output"],
+      ? Promise<Awaited<this["t_current"]>>
+      : this["t_current"],
     this["t_earlyOutput"],
     this["t_input"],
     this["meta"],
@@ -236,14 +238,14 @@ export class FluentPipeline<
   protected updateMeta<NewMeta extends {}>(
     meta: NewMeta
   ): FluentChain<
-    this["t_output"],
+    this["t_current"],
     this["t_earlyOutput"],
     this["t_input"],
     Merge<this["meta"], NewMeta>,
     this["fluentMethods"]
   > {
     return makeFluentPipeline(
-      this.t_output,
+      this.t_current,
       this.t_earlyOutput,
       this.t_input,
       { ...this.meta, ...meta },
@@ -254,32 +256,32 @@ export class FluentPipeline<
 }
 
 export type FluentChain<
-  Output,
+  Current,
   EarlyOutput,
   Input,
   Meta extends {},
   Methods extends MethodsObject
-> = FluentPipeline<Output, EarlyOutput, Input, Meta, Methods> &
-  MethodsForDataType<Methods, Output>;
+> = FluentPipeline<Current, EarlyOutput, Input, Meta, Methods> &
+  MethodsForDataType<Methods, Current>;
 
 export type AnyFluentChain = FluentPipeline<any, any, any, any, any> &
   MethodsObject;
 
 const makeFluentPipeline = <
-  Output,
+  Current,
   EarlyOutput,
   Input,
   Meta extends {},
   Methods extends MethodsObject
 >(
-  data: Output,
+  data: Current,
   earlyOutput: EarlyOutput,
   input: Input,
   meta: Meta,
   methods: Methods,
   pipelineSteps: Function[] = []
-): FluentPipeline<Output, EarlyOutput, Input, Meta, Methods> &
-  MethodsForDataType<Methods, Output> =>
+): FluentPipeline<Current, EarlyOutput, Input, Meta, Methods> &
+  MethodsForDataType<Methods, Current> =>
   new FluentPipeline(
     data,
     earlyOutput,
@@ -419,8 +421,8 @@ export const fluent = makeFluentBuilder(
   }
 );
 
-export type Fluent<Output = any, Input = any> = FluentPipeline<
-  Output | Promise<Output>,
+export type Fluent<Current = any, Input = any> = FluentPipeline<
+  Current | Promise<Current>,
   unknown,
   Input,
   {},
@@ -429,7 +431,7 @@ export type Fluent<Output = any, Input = any> = FluentPipeline<
 export type EmptyFluent = Fluent<NoData, NoData>;
 export type FluentData<
   FluentInstance extends FluentPipeline<any, any, any, any, any>
-> = Awaited<FluentInstance["t_output"]>;
+> = Awaited<FluentInstance["t_current"]>;
 export type FluentInput<FluentInstance extends Fluent> =
   FluentInstance["t_input"];
 
