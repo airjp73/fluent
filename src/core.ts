@@ -8,58 +8,52 @@ import { FluentError, ShortCircuit } from "./errors";
 
 export type NoData = void;
 
-export type AnyTransformFunction = <
+export type AnyFluentMethod = <
   This extends FluentPipeline<any, any, any, any, any>
 >(
   this: This,
   ...args: any[]
 ) => void;
 
-export interface TransformObject extends Record<string, AnyTransformFunction> {}
+export interface MethodsObject extends Record<string, AnyFluentMethod> {}
 
-export type TransformData<T> = Awaited<
+export type FluentMethodData<T> = Awaited<
   ThisParameterType<T> extends FluentPipeline<infer Data, any, any, any, any>
     ? Data
     : never
 >;
 
-type TransformTransforms<T> = ThisParameterType<T> extends FluentPipeline<
+type FluentMethodsOf<T> = ThisParameterType<T> extends FluentPipeline<
   any,
   any,
   any,
   any,
-  infer Transforms
+  infer Methods
 >
-  ? Transforms
+  ? Methods
   : never;
 
-export type DataTypeMatchesTransform<
-  Transform extends AnyTransformFunction,
+export type DataTypeMatchesMethod<
+  Method extends AnyFluentMethod,
   DataType
 > = DataType extends NoData
-  ? TransformData<Transform> extends unknown
+  ? FluentMethodData<Method> extends unknown
     ? true
     : false
-  : Awaited<DataType> extends TransformData<OverloadToTuple<Transform>>
+  : Awaited<DataType> extends FluentMethodData<OverloadToTuple<Method>>
   ? true
   : false;
 
-type TransformKeysAcceptingDataType<
-  Transforms extends TransformObject,
-  DataType
-> = {
-  [K in keyof Transforms]: DataTypeMatchesTransform<
-    Transforms[K],
-    DataType
-  > extends true
-    ? Transforms extends TransformTransforms<OverloadToTuple<Transforms[K]>>
+type MethodKeysAcceptingDataType<Methods extends MethodsObject, DataType> = {
+  [K in keyof Methods]: DataTypeMatchesMethod<Methods[K], DataType> extends true
+    ? Methods extends FluentMethodsOf<OverloadToTuple<Methods[K]>>
       ? K
       : never
     : never;
-}[keyof Transforms];
+}[keyof Methods];
 
-type TransformsForDataType<Transforms extends TransformObject, DataType> = {
-  [K in TransformKeysAcceptingDataType<Transforms, DataType>]: Transforms[K];
+type MethodsForDataType<Methods extends MethodsObject, DataType> = {
+  [K in MethodKeysAcceptingDataType<Methods, DataType>]: Methods[K];
 };
 
 type TerminalOutput<Output, EarlyOutput> = Output extends Promise<any>
@@ -71,7 +65,7 @@ export class FluentPipeline<
   EarlyOutput,
   Input,
   Meta extends {},
-  Transforms extends TransformObject
+  Methods extends MethodsObject
 > {
   public t_innerData: Awaited<this["t_output"]>;
 
@@ -80,7 +74,7 @@ export class FluentPipeline<
     public t_earlyOutput: EarlyOutput,
     public t_input: Input,
     public meta: Meta,
-    public fluentMethods: Transforms,
+    public fluentMethods: Methods,
     protected pipelineSteps: Function[]
   ) {
     this.t_innerData = undefined as any;
@@ -264,38 +258,38 @@ export type FluentChain<
   EarlyOutput,
   Input,
   Meta extends {},
-  Transforms extends TransformObject
-> = FluentPipeline<Output, EarlyOutput, Input, Meta, Transforms> &
-  TransformsForDataType<Transforms, Output>;
+  Methods extends MethodsObject
+> = FluentPipeline<Output, EarlyOutput, Input, Meta, Methods> &
+  MethodsForDataType<Methods, Output>;
 
 export type AnyFluentChain = FluentPipeline<any, any, any, any, any> &
-  TransformObject;
+  MethodsObject;
 
 const makeFluentPipeline = <
   Output,
   EarlyOutput,
   Input,
   Meta extends {},
-  Transforms extends TransformObject
+  Methods extends MethodsObject
 >(
   data: Output,
   earlyOutput: EarlyOutput,
   input: Input,
   meta: Meta,
-  transforms: Transforms,
+  methods: Methods,
   pipelineSteps: Function[] = []
-): FluentPipeline<Output, EarlyOutput, Input, Meta, Transforms> &
-  TransformsForDataType<Transforms, Output> =>
+): FluentPipeline<Output, EarlyOutput, Input, Meta, Methods> &
+  MethodsForDataType<Methods, Output> =>
   new FluentPipeline(
     data,
     earlyOutput,
     input,
     meta,
-    transforms,
+    methods,
     pipelineSteps
   ) as any;
 
-type ExtractErrorDefinitions<T extends TransformObject> = UnionToIntersection<
+type ExtractErrorDefinitions<T extends MethodsObject> = UnionToIntersection<
   {
     [K in keyof T]: T[K] extends {
       errors: infer Errors extends Record<
@@ -310,31 +304,31 @@ type ExtractErrorDefinitions<T extends TransformObject> = UnionToIntersection<
 
 type Default<T, U> = T extends undefined ? U : T;
 interface FluentBuilder<
-  Transforms extends TransformObject,
+  Methods extends MethodsObject,
   Meta extends {
     errorMessages?: Record<string | symbol, string | ((meta: any) => string)>;
   }
 > {
-  __transforms: Transforms;
+  __fluentMethods: Methods;
   __meta: Meta;
   <const Data>(data: Data): FluentChain<
     Data,
     NoData,
     Data,
     Merge<Meta, { fluentInput: Data }>,
-    Transforms
+    Methods
   >;
-  (): FluentChain<NoData, NoData, NoData, Meta, Transforms>;
-  extend<NewTransforms extends TransformObject>(
-    transforms: NewTransforms
+  (): FluentChain<NoData, NoData, NoData, Meta, Methods>;
+  extend<NewMethods extends MethodsObject>(
+    methods: NewMethods
   ): FluentBuilder<
-    Merge<Transforms, NewTransforms>,
+    Merge<Methods, NewMethods>,
     Merge<
       Meta,
       {
         errorMessages: Merge<
           Meta["errorMessages"],
-          ExtractErrorDefinitions<NewTransforms>
+          ExtractErrorDefinitions<NewMethods>
         >;
       }
     >
@@ -344,7 +338,7 @@ interface FluentBuilder<
   >(
     newErrorMessages: NewErrorMessages
   ): FluentBuilder<
-    Transforms,
+    Methods,
     Merge<
       Meta,
       {
@@ -355,12 +349,12 @@ interface FluentBuilder<
 }
 
 const makeFluentBuilder = <
-  const Transforms extends TransformObject,
+  const Methods extends MethodsObject,
   Meta extends {}
 >(
-  transforms: Transforms,
+  methods: Methods,
   meta: Meta
-): FluentBuilder<Transforms, Meta> => {
+): FluentBuilder<Methods, Meta> => {
   function builder(maybeData?: any) {
     return new FluentPipeline(
       undefined,
@@ -370,14 +364,14 @@ const makeFluentBuilder = <
         ...meta,
         fluentInput: maybeData,
       },
-      transforms,
+      methods,
       []
     ) as any;
   }
-  builder.__transforms = transforms;
+  builder.__fluentMethods = methods;
   builder.__meta = meta;
-  builder.extend = (newTransforms: TransformObject) => {
-    const transformErrorMessages = Object.values(newTransforms).reduce(
+  builder.extend = (newMethods: MethodsObject) => {
+    const transformErrorMessages = Object.values(newMethods).reduce(
       (acc: any, val: any) => {
         if ((val as any).errors) {
           Object.entries((val as any).errors).forEach(([key, msg]) => {
@@ -391,8 +385,8 @@ const makeFluentBuilder = <
 
     return makeFluentBuilder(
       {
-        ...transforms,
-        ...newTransforms,
+        ...methods,
+        ...newMethods,
       },
       {
         ...meta,
@@ -404,7 +398,7 @@ const makeFluentBuilder = <
     );
   };
   builder.customizeErrors = (newErrorMessages: any) => {
-    return makeFluentBuilder(transforms, {
+    return makeFluentBuilder(methods, {
       ...meta,
       errorMessages: {
         ...(meta as any).errorMessages,

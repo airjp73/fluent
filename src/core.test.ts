@@ -374,12 +374,15 @@ it("should throw FluentErrors when validations fail", () => {
   expect(getError(() => validator.validate("foo"))).toEqual(
     new FluentError(
       "min_chars",
-      e.__transforms.minChars.errors.min_chars({}, 5)
+      e.__fluentMethods.minChars.errors.min_chars({}, 5)
     )
   );
 
   expect(getError(() => validator.validate(1))).toEqual(
-    new FluentError("string_type", e.__transforms.string.errors.string_type({}))
+    new FluentError(
+      "string_type",
+      e.__fluentMethods.string.errors.string_type({})
+    )
   );
 });
 
