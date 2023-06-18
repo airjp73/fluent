@@ -19,6 +19,13 @@ export type FluentMethodData<T> = Awaited<
     : never
 >;
 
+// Removing `void` from a type is annoying, because it also takes `undefined` with it.
+type ExcludeVoid<T> = T extends void
+  ? T extends undefined
+    ? Exclude<T, void> | undefined
+    : Exclude<T, void>
+  : T;
+
 type FluentMethodsOf<T> = ThisParameterType<T> extends FluentPipeline<
   any,
   any,
@@ -120,7 +127,7 @@ export class FluentPipeline<
       Abort
     >,
     void extends this["t_earlyOutput"] ? Abort : this["t_earlyOutput"] | Abort,
-    void extends this["t_input"] ? Abort : this["t_input"],
+    void extends this["t_input"] ? Abort | void : this["t_input"],
     this["meta"],
     this["fluentMethods"]
   > {
@@ -214,8 +221,10 @@ export class FluentPipeline<
   ): FluentChain<
     CheckedType,
     this["t_earlyOutput"],
-    // The first time we check the type, that tells us what the initial input type is
-    void extends this["t_input"] ? CheckedType : this["t_input"],
+    // Only update the type if the input is still `void`
+    void extends this["t_input"]
+      ? CheckedType | ExcludeVoid<this["t_input"]>
+      : this["t_input"],
     this["meta"],
     this["fluentMethods"]
   > {

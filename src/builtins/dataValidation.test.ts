@@ -11,11 +11,11 @@ it("should support optional values", () => {
       string,
       undefined,
       string | undefined,
-      { optional: true },
+      { pipelineType: "data-last"; optional: true },
       any
     >
   >(s);
-  expectType<string | undefined>(s.apply(undefined)).toEqual(undefined);
+  expectType<string | undefined>(s.validate(undefined)).toEqual(undefined);
   expectType<string | undefined>(s.apply("hello")).toEqual("hello");
   expect(() => s.apply("hi")).toThrow("too short");
 
