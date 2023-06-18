@@ -214,7 +214,8 @@ export class FluentPipeline<
   ): FluentChain<
     CheckedType,
     this["t_earlyOutput"],
-    void extends this["t_input"] ? CheckedType : this["t_input"] | CheckedType,
+    // The first time we check the type, that tells us what the initial input type is
+    void extends this["t_input"] ? CheckedType : this["t_input"],
     this["meta"],
     this["fluentMethods"]
   > {

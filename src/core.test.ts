@@ -411,6 +411,22 @@ it("should be able to perform short-circuit evaluation", () => {
   expectType<string | number>(res3.get()).toEqual(123);
 });
 
+it("should not overwrite input type with multiple checkType calls", () => {
+  function declareTypeIsString<This extends Fluent>(this: This) {
+    return this.checkType(
+      (input): input is string => typeof input === "string"
+    );
+  }
+  const f = fluent.extend({
+    declareTypeIsString,
+    num,
+  });
+
+  expectType<FluentPipeline<string, NoData, number, {}, any>>(
+    f().num().declareTypeIsString()
+  );
+});
+
 describe("toFluentMethod", () => {
   it("should transform regular functions into fluent methods", () => {
     const add = toFluentMethod((a: number, b: number) => a + b);
