@@ -1,9 +1,4 @@
-import {
-  Merge,
-  MergeIntersection,
-  OverloadToTuple,
-  UnionToIntersection,
-} from "./typeUtils";
+import { Merge, OverloadToTuple, UnionToIntersection } from "./typeUtils";
 import { FluentError, ShortCircuit } from "./errors";
 
 export type NoData = void;
