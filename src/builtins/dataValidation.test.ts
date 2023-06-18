@@ -17,3 +17,19 @@ it("should support optional values", () => {
   // @ts-expect-error
   const s2 = e().string().optional();
 });
+
+it("should support required errors", () => {
+  const s = e().required().string();
+
+  expectType<FluentPipeline<string, void, string, any, any>>(s);
+  expectType<string>(s.validate("hello"));
+  expect(() => s.validate(undefined)).toThrow(
+    e.__meta.errorMessages.required({})
+  );
+
+  expect(() => e().label("foo").required().validate(undefined)).toThrow(
+    e.__meta.errorMessages.required({ label: "foo" })
+  );
+
+  expect(() => e().required("Custom").validate(undefined)).toThrow("Custom");
+});

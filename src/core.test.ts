@@ -16,9 +16,6 @@ import { label } from "./builtins/forms";
 import { e } from "./preconfigured/everything";
 import { FluentError, ShortCircuit } from "./errors";
 
-/**
- * Does this have docs, too?
- */
 function concat<
   This extends Fluent<readonly any[]>,
   const Suff extends readonly any[]
