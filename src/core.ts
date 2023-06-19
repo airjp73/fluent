@@ -68,61 +68,80 @@ type TerminalOutput<Current, EarlyOutput> = Current extends Promise<any>
 export type Infer<F extends FluentPipeline<any, any, any, any, any>> =
   TerminalOutput<F["t_current"], F["t_earlyOutput"]>;
 
+// Similar trick to MergeIntersection, but that doesn't lose the FluentPipeline class
+type ExpandFluent<T> = T extends FluentChain<
+  infer A,
+  infer B,
+  infer C,
+  infer D,
+  infer E
+>
+  ? FluentChain<A, B, C, D, E>
+  : never;
+
 export type CheckType<
   This extends FluentPipeline<any, any, any, any, any>,
   CheckedType
-> = FluentChain<
-  CheckedType,
-  This["t_earlyOutput"],
-  // Only update the type if the input is still `void`
-  void extends This["t_input"]
-    ? CheckedType | ExcludeVoid<This["t_input"]>
-    : This["t_input"],
-  This["meta"],
-  This["fluentMethods"]
+> = ExpandFluent<
+  FluentChain<
+    CheckedType,
+    This["t_earlyOutput"],
+    // Only update the type if the input is still `void`
+    void extends This["t_input"]
+      ? CheckedType | ExcludeVoid<This["t_input"]>
+      : This["t_input"],
+    This["meta"],
+    This["fluentMethods"]
+  >
 >;
 
 export type Check<
   This extends FluentPipeline<any, any, any, any, any>,
   Result extends boolean | Promise<boolean>
-> = FluentChain<
-  Result extends Promise<boolean>
-    ? Promise<Awaited<This["t_current"]>>
-    : This["t_current"],
-  This["t_earlyOutput"],
-  This["t_input"],
-  This["meta"],
-  This["fluentMethods"]
+> = ExpandFluent<
+  FluentChain<
+    Result extends Promise<boolean>
+      ? Promise<Awaited<This["t_current"]>>
+      : This["t_current"],
+    This["t_earlyOutput"],
+    This["t_input"],
+    This["meta"],
+    This["fluentMethods"]
+  >
 >;
 
 export type Transform<
   This extends FluentPipeline<any, any, any, any, any>,
   ChainedData
-> = FluentChain<
-  This["t_current"] extends Promise<any>
-    ? Promise<Awaited<ChainedData>>
-    : ChainedData,
-  This["t_earlyOutput"],
-  This["t_input"],
-  This["meta"],
-  This["fluentMethods"]
+> = ExpandFluent<
+  FluentChain<
+    This["t_current"] extends Promise<any>
+      ? Promise<Awaited<ChainedData>>
+      : ChainedData,
+    This["t_earlyOutput"],
+    This["t_input"],
+    This["meta"],
+    This["fluentMethods"]
+  >
 >;
 
 export type ShortCircuitResult<
   This extends FluentPipeline<any, any, any, any, any>,
   Keep extends This["t_innerData"],
   Abort
-> = FluentChain<
-  Exclude<
-    This["t_current"] extends Promise<any>
-      ? Promise<Awaited<Keep>>
-      : Awaited<Keep>,
-    Abort
-  >,
-  void extends This["t_earlyOutput"] ? Abort : This["t_earlyOutput"] | Abort,
-  void extends This["t_input"] ? Abort | void : This["t_input"],
-  This["meta"],
-  This["fluentMethods"]
+> = ExpandFluent<
+  FluentChain<
+    Exclude<
+      This["t_current"] extends Promise<any>
+        ? Promise<Awaited<Keep>>
+        : Awaited<Keep>,
+      Abort
+    >,
+    void extends This["t_earlyOutput"] ? Abort : This["t_earlyOutput"] | Abort,
+    void extends This["t_input"] ? Abort | void : This["t_input"],
+    This["meta"],
+    This["fluentMethods"]
+  >
 >;
 
 export type RunOutput<This extends FluentPipeline<any, any, any, any, any>> =
@@ -131,12 +150,14 @@ export type RunOutput<This extends FluentPipeline<any, any, any, any, any>> =
 export type UpdateMeta<
   This extends FluentPipeline<any, any, any, any, any>,
   NewMeta extends {}
-> = FluentChain<
-  This["t_current"],
-  This["t_earlyOutput"],
-  This["t_input"],
-  Merge<This["meta"], NewMeta>,
-  This["fluentMethods"]
+> = ExpandFluent<
+  FluentChain<
+    This["t_current"],
+    This["t_earlyOutput"],
+    This["t_input"],
+    Merge<This["meta"], NewMeta>,
+    This["fluentMethods"]
+  >
 >;
 
 export class FluentPipeline<

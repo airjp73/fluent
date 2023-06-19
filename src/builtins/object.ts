@@ -2,11 +2,13 @@ import {
   CheckType,
   EmptyFluent,
   Fluent,
+  FluentChain,
   FluentError,
   FluentPipeline,
   Infer,
   Transform,
 } from "..";
+import { MergeIntersection } from "../typeUtils";
 import { MaybePromise, MaybePromiseSettledResult } from "../util/maybePromise";
 
 type DataLastPipeline = FluentPipeline<
@@ -113,7 +115,7 @@ function object<This extends EmptyFluent, Shape extends FluentObjectShape>(
     "object_type"
   ).transform(
     (input): InferShape<Shape> =>
-      processObjectShape.call(this, input, shapeOrMessage).flatten()
+      processObjectShape.call(this, input as any, shapeOrMessage).flatten()
   );
 }
 object.errors = {
