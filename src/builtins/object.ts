@@ -22,14 +22,15 @@ export type FluentObjectShape = Record<
   DataLastPipeline
 >;
 
-type InferShape<Shape extends FluentObjectShape> =
-  Promise<any> extends Shape[keyof Shape]
-    ? Promise<{
-        [K in keyof Shape]: Awaited<Infer<Shape[K]>>;
-      }>
-    : {
-        [K in keyof Shape]: Infer<Shape[K]>;
-      };
+type InferShape<Shape extends FluentObjectShape> = Promise<any> extends Infer<
+  Shape[keyof Shape]
+>
+  ? Promise<{
+      [K in keyof Shape]: Awaited<Infer<Shape[K]>>;
+    }>
+  : {
+      [K in keyof Shape]: Infer<Shape[K]>;
+    };
 
 function processObjectShape<
   This extends Fluent,

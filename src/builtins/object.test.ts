@@ -31,6 +31,18 @@ it("should transform keys", () => {
   expect(v.validate({ name: "bob" })).toEqual({ name: "BOB" });
 });
 
+it("should handle async keys", async () => {
+  const v = e().object({
+    name: e().string(),
+    foo: e()
+      .string()
+      .check(() => Promise.resolve(true)),
+  });
+  expectType<{ name: string; foo: string }>(
+    await v.validate({ name: "bob", foo: "bar" })
+  ).toEqual({ name: "bob", foo: "bar" });
+});
+
 it("should validate object properties", () => {
   const v = e().object({
     name: e().string().minChars(5),
