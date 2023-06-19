@@ -14,12 +14,21 @@ const getErrorDetails = (func: () => any) => {
 };
 
 it("should not allow properties to already have an input", () => {
+  // @ts-expect-error
   const v = e().object({
-    // @ts-expect-error
     name: e("bob").minChars(1),
   });
 
   expect(v.validate({ name: "jim" })).toEqual({ name: "jim" });
+});
+
+it("should transform keys", () => {
+  const v = e().object({
+    name: e()
+      .string()
+      .transform((input) => input.toUpperCase()),
+  });
+  expect(v.validate({ name: "bob" })).toEqual({ name: "BOB" });
 });
 
 it("should validate object properties", () => {
@@ -116,6 +125,54 @@ it("should validate object properties", () => {
             ],
           },
         ],
+      },
+    ],
+  });
+});
+
+it("should support a catchall type", () => {
+  const v = e().object().withCatchall({ name: e().string() }, e().number());
+
+  const res = v.validate({ name: "bob", age: 123 });
+  expectType<{ name: string } & Record<string | number, number>>(res).toEqual({
+    name: "bob",
+    age: 123,
+  });
+});
+
+it("should combine errors from catchall type and shape", () => {
+  const v = e()
+    .object()
+    .withCatchall({ name: e().string(), notes: e().string() }, e().number());
+  const err = getErrorDetails(() => v.validate({ jim: "hi", bob: "lo" }));
+  expect(err).toEqual({
+    code: "object_shape",
+    message: e.__fluentMethods.object.errors.object_shape({}),
+    path: [],
+    childIssues: [
+      {
+        code: "string_type",
+        message: e.__fluentMethods.string.errors.string_type({}),
+        path: ["name"],
+        childIssues: [],
+      },
+      {
+        code: "string_type",
+        message: e.__fluentMethods.string.errors.string_type({}),
+        path: ["notes"],
+        childIssues: [],
+      },
+      {
+        code: "number_type",
+        message: e.__fluentMethods.number.errors.number_type({}),
+        path: ["jim"],
+        childIssues: [],
+      },
+      {
+        code: "number_type",
+        message: e.__fluentMethods.number.errors.number_type({}),
+        path: ["bob"],
+        childIssues: [],
       },
     ],
   });
