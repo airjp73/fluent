@@ -68,6 +68,77 @@ type TerminalOutput<Current, EarlyOutput> = Current extends Promise<any>
 export type Infer<F extends FluentPipeline<any, any, any, any, any>> =
   TerminalOutput<F["t_current"], F["t_earlyOutput"]>;
 
+export type CheckType<
+  This extends FluentPipeline<any, any, any, any, any>,
+  CheckedType
+> = FluentChain<
+  CheckedType,
+  This["t_earlyOutput"],
+  // Only update the type if the input is still `void`
+  void extends This["t_input"]
+    ? CheckedType | ExcludeVoid<This["t_input"]>
+    : This["t_input"],
+  This["meta"],
+  This["fluentMethods"]
+>;
+
+export type Check<
+  This extends FluentPipeline<any, any, any, any, any>,
+  Result extends boolean | Promise<boolean>
+> = FluentChain<
+  Result extends Promise<boolean>
+    ? Promise<Awaited<This["t_current"]>>
+    : This["t_current"],
+  This["t_earlyOutput"],
+  This["t_input"],
+  This["meta"],
+  This["fluentMethods"]
+>;
+
+export type Transform<
+  This extends FluentPipeline<any, any, any, any, any>,
+  ChainedData
+> = FluentChain<
+  This["t_current"] extends Promise<any>
+    ? Promise<Awaited<ChainedData>>
+    : ChainedData,
+  This["t_earlyOutput"],
+  This["t_input"],
+  This["meta"],
+  This["fluentMethods"]
+>;
+
+export type ShortCircuitResult<
+  This extends FluentPipeline<any, any, any, any, any>,
+  Keep extends This["t_innerData"],
+  Abort
+> = FluentChain<
+  Exclude<
+    This["t_current"] extends Promise<any>
+      ? Promise<Awaited<Keep>>
+      : Awaited<Keep>,
+    Abort
+  >,
+  void extends This["t_earlyOutput"] ? Abort : This["t_earlyOutput"] | Abort,
+  void extends This["t_input"] ? Abort | void : This["t_input"],
+  This["meta"],
+  This["fluentMethods"]
+>;
+
+export type RunOutput<This extends FluentPipeline<any, any, any, any, any>> =
+  TerminalOutput<This["t_current"], This["t_earlyOutput"]>;
+
+export type UpdateMeta<
+  This extends FluentPipeline<any, any, any, any, any>,
+  NewMeta extends {}
+> = FluentChain<
+  This["t_current"],
+  This["t_earlyOutput"],
+  This["t_input"],
+  Merge<This["meta"], NewMeta>,
+  This["fluentMethods"]
+>;
+
 export class FluentPipeline<
   Current,
   EarlyOutput,
@@ -94,15 +165,7 @@ export class FluentPipeline<
 
   public transform<const ChainedData>(
     func: (input: this["t_innerData"]) => ChainedData
-  ): FluentChain<
-    this["t_current"] extends Promise<any>
-      ? Promise<Awaited<ChainedData>>
-      : ChainedData,
-    this["t_earlyOutput"],
-    this["t_input"],
-    this["meta"],
-    this["fluentMethods"]
-  > {
+  ): Transform<this, ChainedData> {
     const nextPipeline = [
       ...this.pipelineSteps,
       (data: any) => (data instanceof Promise ? data.then(func) : func(data)),
@@ -119,18 +182,7 @@ export class FluentPipeline<
 
   protected shortCircuit<Keep extends this["t_innerData"], Abort>(
     func: (input: this["t_innerData"]) => Keep | ShortCircuit<Abort>
-  ): FluentChain<
-    Exclude<
-      this["t_current"] extends Promise<any>
-        ? Promise<Awaited<Keep>>
-        : Awaited<Keep>,
-      Abort
-    >,
-    void extends this["t_earlyOutput"] ? Abort : this["t_earlyOutput"] | Abort,
-    void extends this["t_input"] ? Abort | void : this["t_input"],
-    this["meta"],
-    this["fluentMethods"]
-  > {
+  ): ShortCircuitResult<this, Keep, Abort> {
     const getEarlyReturns = (data: any) => {
       const res = func(data);
       if (res instanceof ShortCircuit) throw res;
@@ -147,9 +199,7 @@ export class FluentPipeline<
     ) as any;
   }
 
-  protected runFluentPipeline(
-    input: any
-  ): TerminalOutput<this["t_current"], this["t_earlyOutput"]> {
+  protected runFluentPipeline(input: any): RunOutput<this> {
     if (this.pipelineSteps.length === 0)
       throw new Error("Cannot run empty fluent pipeline");
 
@@ -178,15 +228,7 @@ export class FluentPipeline<
     checker: (input: Awaited<Current>) => Result,
     message?: string | ((meta: this["meta"], val: this["t_current"]) => string),
     errorCode?: string
-  ): FluentChain<
-    Result extends Promise<boolean>
-      ? Promise<Awaited<this["t_current"]>>
-      : this["t_current"],
-    this["t_earlyOutput"],
-    this["t_input"],
-    this["meta"],
-    this["fluentMethods"]
-  > {
+  ): Check<this, Result> {
     return this.transform((prev) => {
       const res = checker(prev);
 
@@ -218,16 +260,7 @@ export class FluentPipeline<
     checker: (input: unknown) => input is CheckedType,
     message?: string | ((meta: this["meta"]) => string),
     errorCode?: string
-  ): FluentChain<
-    CheckedType,
-    this["t_earlyOutput"],
-    // Only update the type if the input is still `void`
-    void extends this["t_input"]
-      ? CheckedType | ExcludeVoid<this["t_input"]>
-      : this["t_input"],
-    this["meta"],
-    this["fluentMethods"]
-  > {
+  ): CheckType<this, CheckedType> {
     return this.transform((prev) => {
       if (checker(prev)) return prev;
       const getMsg = () => {
@@ -248,13 +281,7 @@ export class FluentPipeline<
 
   protected updateMeta<const NewMeta extends {}>(
     meta: NewMeta
-  ): FluentChain<
-    this["t_current"],
-    this["t_earlyOutput"],
-    this["t_input"],
-    Merge<this["meta"], NewMeta>,
-    this["fluentMethods"]
-  > {
+  ): UpdateMeta<this, NewMeta> {
     return makeFluentPipeline(
       this.t_current,
       this.t_earlyOutput,
