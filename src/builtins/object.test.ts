@@ -142,6 +142,30 @@ it("should validate object properties", () => {
   });
 });
 
+it("should omit unknown keys by default", () => {
+  const v = e().object({
+    name: e().string(),
+  });
+  const res = v.validate({ name: "bob", age: 123 });
+  expect(res).toEqual({ name: "bob" });
+});
+
+it("should support passthrough", () => {
+  const v = e()
+    .object()
+    .passthrough({
+      name: e()
+        .string()
+        .transform((input) => input.toUpperCase()),
+    });
+  const res = v.validate({ name: "bob", age: 123 });
+  expectType<
+    {
+      name: string;
+    } & Record<string | number, unknown>
+  >(res).toEqual({ name: "BOB", age: 123 });
+});
+
 it("should support a catchall type", () => {
   const v = e().object().withCatchall({ name: e().string() }, e().number());
 

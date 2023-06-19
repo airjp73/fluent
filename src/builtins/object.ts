@@ -172,4 +172,27 @@ function withCatchall<
   );
 }
 
-export { object, withCatchall };
+function passthrough<
+  This extends Fluent<object>,
+  Shape extends FluentObjectShape
+>(this: This, shape: Shape) {
+  return this.transform(
+    (input): InferShape<Shape> & Record<string | number, unknown> => {
+      const shapeMaybe = processObjectShape.call(this, input, shape);
+      const shapeKeys = new Set(Object.keys(shape));
+      const passthroughKeys = Object.keys(input).filter(
+        (key) => !shapeKeys.has(key)
+      );
+      return shapeMaybe
+        .then((shapeResult) => {
+          passthroughKeys.forEach((key) => {
+            shapeResult[key] = (input as any)[key];
+          });
+          return shapeResult;
+        })
+        .flatten();
+    }
+  );
+}
+
+export { object, withCatchall, passthrough };
